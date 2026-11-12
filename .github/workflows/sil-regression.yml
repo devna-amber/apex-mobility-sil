@@ -8,18 +8,24 @@ on:
 
 jobs:
   sil-verification:
-    name: Full 5-Layer SIL Verification
+    name: Full 6-Layer SIL Verification (C + ASM + Verilog + DSP + Twin + CAN)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Linux Toolchain (GCC, NASM, Icarus Verilog, NumPy)
+      - name: Install Linux Toolchain & CAN Utilities
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc nasm make iverilog python3-numpy
+          sudo apt-get install -y gcc nasm make iverilog python3-numpy can-utils
 
-      - name: Run Master 5-Layer SIL Validation Pipeline
+      - name: Bring Up Virtual CAN Bus (vcan0)
+        run: |
+          sudo modprobe vcan
+          sudo ip link add dev vcan0 type vcan
+          sudo ip link set up vcan0
+
+      - name: Run Master 6-Layer SIL Validation Pipeline
         run: |
           python3 scripts/run_sil_pipeline.py
