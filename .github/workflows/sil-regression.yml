@@ -1,0 +1,41 @@
+name: Apex Mobility SIL Regression Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sil-verification:
+    name: Multi-Layer SIL Verification (C + ASM + Verilog + DSP)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Toolchain (GCC, NASM, Icarus Verilog, NumPy)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc nasm make iverilog python3-numpy
+
+      - name: Layer 1 - Verify C BMS Thermal & Voltage Guard
+        run: |
+          gcc -Wall -Wextra -O2 ecu-powertrain-c/bms_fault_guard.c -o bms_guard
+          ./bms_guard
+          rm -f bms_guard
+
+      - name: Layer 2 - Verify x86-64 Assembly Telemetry Checksum
+        run: |
+          make -C bridges/checksum-asm test
+          make -C bridges/checksum-asm clean
+
+      - name: Layer 3 - Verify Verilog BMS Hardware Interlock FSM
+        run: |
+          make -C plant-models/safety-fsm-verilog test
+          make -C plant-models/safety-fsm-verilog clean
+
+      - name: Layer 4 - Verify Python FIR & FFT Telemetry DSP Filter
+        run: |
+          python3 telemetry/dsp-filter/signal_conditioning.py
