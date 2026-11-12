@@ -15,8 +15,10 @@ def compute_can_crc8(data: bytes) -> int:
     return crc
 
 def main() -> int:
-    interface = sys.argv[1] if len(sys.argv) > 1 else "vcan0"
-    expected_frames = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    args = iter(sys.argv)
+    next(args, None)
+    interface = next(args, "vcan0")
+    expected_frames = int(next(args, "5"))
 
     try:
         sock = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
@@ -39,20 +41,14 @@ def main() -> int:
         if can_id != 0x101 or can_dlc != 8:
             continue
 
+        voltage_dv, current_da, soc, temp_c, counter, actual_crc = struct.unpack(">HhBBBB", data)
         expected_crc = compute_can_crc8(data[:7])
-        actual_crc = data[7]
         if expected_crc != actual_crc:
             print(f"[FAIL] CRC mismatch on frame {received}")
             sock.close()
             return 1
 
-        voltage_v = struct.unpack(">H", data[0:2])[0] / 10.0
-        current_a = struct.unpack(">h", data[2:4])[0] / 10.0
-        soc = data[4]
-        temp_c = data[5]
-        counter = data[6]
-
-        print(f"[PY-CAN-RX] Verified Frame #{counter} | Pack={voltage_v:.1f}V | Curr={current_a:.1f}A | SoC={soc}% | Temp={temp_c}C [CRC OK]")
+        print(f"[PY-CAN-RX] Verified Frame #{counter} | Pack={voltage_dv/10.0:.1f}V | Curr={current_da/10.0:.1f}A | SoC={soc}% | Temp={temp_c}C [CRC OK]")
         received += 1
 
     sock.close()
