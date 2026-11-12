@@ -1,8 +1,8 @@
 # Apex Mobility SIL — Autonomous Vehicle & EV Telemetry Architecture
 
-[![SIL Regression Gate: Passing](docs/ci_badge.png)](https://github.com)
+[![SIL Regression Gate: Passing](docs/ci_badge.png?v=2)](https://github.com)
 
-![Apex Mobility SIL Telemetry Dashboard](docs/sil_telemetry_dashboard.png)
+![Apex Mobility SIL Telemetry Dashboard](docs/sil_telemetry_dashboard.png?v=2)
 
 A deterministic, **12-layer Software-in-the-Loop (SIL)** simulation and validation architecture for next-generation Electric Vehicles (EVs) and Autonomous Vehicles (AVs). Built and verified natively on Linux using **C11, x86-64 Assembly (`nasm`), Verilog RTL (`iverilog`), Linux SocketCAN (`vcan0`), Python DSP, and GitHub Actions CI/CD**.
 
