@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""
-bridges/socketcan-bus/can_telemetry_rx.py
-Native Linux SocketCAN Telemetry Receiver & CRC-8 Validator.
-"""
-
 import socket
 import struct
 import sys
 
 CAN_FRAME_FMT = "=IB3x8s"
 CAN_FRAME_SIZE = struct.calcsize(CAN_FRAME_FMT)
-
 
 def compute_can_crc8(data: bytes) -> int:
     crc = 0xFF
@@ -19,7 +13,6 @@ def compute_can_crc8(data: bytes) -> int:
         for _ in range(8):
             crc = ((crc << 1) ^ 0x1D) & 0xFF if (crc & 0x80) else (crc << 1) & 0xFF
     return crc
-
 
 def main() -> int:
     interface = sys.argv[1] if len(sys.argv) > 1 else "vcan0"
@@ -33,9 +26,7 @@ def main() -> int:
         print(f"[ERROR] Failed to bind SocketCAN interface '{interface}': {exc}")
         return 1
 
-    print(f"[PY-CAN-RX] Listening on {interface} for {expected_frames} BMS frames...")
     received = 0
-
     while received < expected_frames:
         try:
             raw_frame = sock.recv(CAN_FRAME_SIZE)
@@ -51,7 +42,7 @@ def main() -> int:
         expected_crc = compute_can_crc8(data[:7])
         actual_crc = data[7]
         if expected_crc != actual_crc:
-            print(f"[FAIL] CRC mismatch on frame {received}: expected 0x{expected_crc:02X}, got 0x{actual_crc:02X}")
+            print(f"[FAIL] CRC mismatch on frame {received}")
             sock.close()
             return 1
 
@@ -65,9 +56,8 @@ def main() -> int:
         received += 1
 
     sock.close()
-    print("[PASS] All SocketCAN frames received and verified with zero packet loss.")
+    print("[PASS] All SocketCAN frames received and verified.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

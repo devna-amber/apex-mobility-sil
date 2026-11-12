@@ -9,7 +9,6 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 
-// Fast 8-bit integrity tag for standard 8-byte Classic CAN payload
 static uint8_t compute_can_crc8(const uint8_t *data, size_t len) {
     uint8_t crc = 0xFF;
     for (size_t i = 0; i < len; i++) {
@@ -33,7 +32,7 @@ int main(int argc, char **argv) {
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
     if (ioctl(sock, SIOCGIFINDEX, &ifr) < 0) {
-        perror("ioctl(SIOCGIFINDEX) - did you bring up vcan0?");
+        perror("ioctl(SIOCGIFINDEX)");
         close(sock);
         return 1;
     }
@@ -49,17 +48,16 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Broadcast 5 simulated EV BMS frames on CAN ID 0x101
     for (int i = 0; i < 5; i++) {
         struct can_frame frame;
         memset(&frame, 0, sizeof(frame));
-        frame.can_id  = 0x101; // BMS Telemetry Standard ID
-        frame.can_dlc = 8;     // 8-byte automotive payload
+        frame.can_id  = 0x101;
+        frame.can_dlc = 8;
 
-        uint16_t pack_voltage_dv = (uint16_t)(4020 - i * 5); // 402.0V -> 400.0V
-        int16_t  pack_current_da = (int16_t)(180 + i * 25);  // 18.0A -> 28.0A
-        uint8_t  soc_percent     = (uint8_t)(85 - i);        // 85% -> 81%
-        uint8_t  max_temp_c      = (uint8_t)(38 + i * 4);    // 38C -> 54C
+        uint16_t pack_voltage_dv = (uint16_t)(4020 - i * 5);
+        int16_t  pack_current_da = (int16_t)(180 + i * 25);
+        uint8_t  soc_percent     = (uint8_t)(85 - i);
+        uint8_t  max_temp_c      = (uint8_t)(38 + i * 4);
         uint8_t  alive_counter   = (uint8_t)(i & 0x0F);
 
         frame.data[0] = (uint8_t)(pack_voltage_dv >> 8);
@@ -79,7 +77,7 @@ int main(int argc, char **argv) {
         printf("[C-ECU-TX] Sent CAN ID 0x%03X | V=%.1fV | I=%.1fA | SoC=%u%% | Temp=%uC | CRC=0x%02X\n",
                frame.can_id, pack_voltage_dv / 10.0, pack_current_da / 10.0,
                soc_percent, max_temp_c, frame.data[7]);
-        usleep(100000); // 100 ms (10 Hz automotive broadcast cycle)
+        usleep(50000);
     }
 
     close(sock);
