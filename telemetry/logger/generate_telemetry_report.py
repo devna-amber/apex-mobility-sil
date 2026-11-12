@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-telemetry/logger/generate_telemetry_report.py
-Zero-dependency Automotive HUD Telemetry Dashboard & Status Badge Generator.
-Renders glowing neon telemetry curves, coordinate grids, and crisp bitmap text
-into native PNG images using only Python's standard library.
-"""
-
 import csv
 import json
 import math
@@ -14,7 +7,6 @@ import struct
 import sys
 import zlib
 
-# Crisp 5x7 Bitmap Pixel Font for HUD Labels & Status Badge
 FONT_5X7 = {
     "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
     "B": ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
@@ -55,8 +47,6 @@ FONT_5X7 = {
     "-": ["00000", "00000", "00000", "11111", "00000", "00000", "00000"],
     "+": ["00000", "00100", "00100", "11111", "00100", "00100", "00000"],
     "/": ["00001", "00010", "00100", "00100", "01000", "10000", "00000"],
-    "(": ["00010", "00100", "01000", "01000", "01000", "00100", "00010"],
-    ")": ["01000", "00100", "00010", "00010", "00010", "00100", "01000"],
     "<": ["00010", "00100", "01000", "10000", "01000", "00100", "00010"],
     " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
 }
@@ -143,14 +133,13 @@ def plot_glow_series(buf: bytearray, w: int, h: int, xs: list, ys: list,
 
     if glow:
         for i in range(1, len(pts)):
-            p0, p1 = pts[i - 1], pts[i]
-            draw_line(buf, w, h, p0.real if hasattr(p0, "real") else next(iter(p0)),
-                      list(p0).pop(), next(iter(p1)), list(p1).pop(), rgb, thick=7, alpha=0.14)
+            x0, y0 = pts[i - 1]
+            x1, y1 = pts[i]
+            draw_line(buf, w, h, x0, y0, x1, y1, rgb, thick=7, alpha=0.14)
 
     for i in range(1, len(pts)):
-        p0, p1 = pts[i - 1], pts[i]
-        x0, y0 = tuple(p0)
-        x1, y1 = tuple(p1)
+        x0, y0 = pts[i - 1]
+        x1, y1 = pts[i]
         draw_line(buf, w, h, x0, y0, x1, y1, rgb, thick=2 if glow else 1, alpha=1.0 if glow else 0.75)
 
 
@@ -158,7 +147,6 @@ def generate_hud_badge() -> None:
     W, H = 286, 28
     buf = bytearray((18, 24, 34) * (W * H))
     draw_rect_border(buf, W, H, 0, 0, W, H, (18, 24, 34), (48, 62, 80))
-    # Emerald status pill on right side
     for y in range(1, H - 1):
         for x in range(142, W - 1):
             set_px(buf, W, H, x, y, (16, 110, 62))
@@ -170,7 +158,6 @@ def generate_hud_badge() -> None:
 def run_and_record() -> int:
     rng = random.Random(42)
 
-    # 1. DSP Current Conditioning
     fs = 2000.0
     n_samples = 300
     t_ms = [(i / fs) * 1000.0 for i in range(n_samples)]
@@ -193,7 +180,6 @@ def run_and_record() -> int:
         for i in range(n_samples)
     ]
 
-    # 2. 60-Second Predictive Thermal Digital Twin
     horizon = list(range(61))
     t_cruise = [44.0]
     t_sprint = [44.0]
@@ -201,7 +187,6 @@ def run_and_record() -> int:
         t_cruise.append(t_cruise[-1] + (((120.0 ** 2) * 0.015 - 18.0 * (t_cruise[-1] - 32.0)) / 1200.0))
         t_sprint.append(t_sprint[-1] + (((320.0 ** 2) * 0.015 - 18.0 * (t_sprint[-1] - 32.0)) / 1200.0))
 
-    # 3. AV Radar + LiDAR Kalman Range Fusion
     steps = [s * 0.1 for s in range(13)]
     true_d = [45.0 - 25.0 * s for s in steps]
     radar_d = [d + rng.gauss(0.0, 1.4) for d in true_d]
@@ -210,26 +195,25 @@ def run_and_record() -> int:
     with open("docs/sil_telemetry_summary.json", "w", encoding="utf-8") as jf:
         json.dump({
             "architecture": "Apex Mobility SIL (12-Layer Luxury HUD)",
+            "dsp_peak_current_filtered_a": round(max(filtered_i[15:-15]), 2),
+            "thermal_twin_60s_sprint_c": round(t_sprint[-1], 2),
+            "aeb_trigger_time_s": 0.7,
+            "status": "PASS",
+        }, jf, indent=2)
 
+    with open("docs/thermal_trace.csv", "w", newline="", encoding="utf-8") as cf:
+        writer = csv.writer(cf)
+        writer.writerow(["time_s", "cruise_temp_c", "sprint_temp_c"])
+        for sec, tc, ts in zip(horizon, t_cruise, t_sprint):
+            writer.writerow([sec, round(tc, 3), round(ts, 3)])
 
-"dsp_peak_current_filtered_a": round(max(filtered_i[15:-15]), 2),
-"thermal_twin_60s_sprint_c": round(t_sprint[-1], 2),
-"aeb_trigger_time_s": 0.7,
-"status": "PASS",
-}, jf, indent=2)
-with open("docs/thermal_trace.csv", "w", newline="", encoding="utf-8") as cf:
-writer = csv.writer(cf)
-writer.writerow(["time_s", "cruise_temp_c", "sprint_temp_c"])
-for sec, tc, ts in zip(horizon, t_cruise, t_sprint):
-writer.writerow([sec, round(tc, 3), round(ts, 3)])
-# Render 1140x340 Automotive HUD Telemetry Dashboard
-W, H = 1140, 340
-buf = bytearray((10, 14, 22) * (W * H))
-draw_rect_border(buf, W, H, 0, 0, W, H, (10, 14, 22), (38, 52, 70))
-# Top Header Bar
-draw_text(buf, W, H, 24, 16, "APEX MOBILITY SIL // REAL-TIME TELEMETRY HUD", (0, 230, 255), scale=2)
+    W, H = 1140, 340
+    buf = bytearray((10, 14, 22) * (W * H))
+    draw_rect_border(buf, W, H, 0, 0, W, H, (10, 14, 22), (38, 52, 70))
+
+    draw_text(buf, W, H, 24, 16, "APEX MOBILITY SIL // REAL-TIME TELEMETRY HUD", (0, 230, 255), scale=2)
+
 draw_text(buf, W, H, 845, 18, "MODE: DETERMINISTIC", (57, 255, 136), scale=2)
-# 3 HUD Instrument Cards
 cards = [
 (22, 46, 352, 274, "1. FIR DSP FILTER", "+16.8DB SNR // 450HZ CUT"),
 (394, 46, 352, 274, "2. THERMAL TWIN", "60S FORECAST // 55C LIMIT"),
@@ -237,21 +221,17 @@ cards = [
 ]
 for cx, cy, cw, ch, title, sub in cards:
 draw_rect_border(buf, W, H, cx, cy, cw, ch, (15, 21, 32), (45, 65, 88))
-# Glowing cyan top accent line
 draw_line(buf, W, H, cx + 1, cy + 1, cx + cw - 2, cy + 1, (0, 210, 255), thick=2)
 draw_text(buf, W, H, cx + 14, cy + 12, title, (230, 242, 255), scale=2)
 draw_text(buf, W, H, cx + 14, cy + ch - 20, sub, (125, 150, 175), scale=1)
 draw_hud_grid(buf, W, H, cx + 16, cy + 36, cw - 32, ch - 68)
-# Panel 1 Curves: Neon Coral PWM Noise vs Glowing Emerald FIR Output
 plot_glow_series(buf, W, H, t_ms[15:-15], noisy_i[15:-15], 0, 150, 60, 180, 38, 82, 320, 206, (255, 85, 95), glow=False)
 plot_glow_series(buf, W, H, t_ms[15:-15], filtered_i[15:-15], 0, 150, 60, 180, 38, 82, 320, 206, (45, 255, 130), glow=True)
-# Panel 2 Curves: Electric Cyan Cruise, Glowing Amber Sprint, Crimson 55C Derate Line
 limit_y = int(round(82 + 206 - ((55.0 - 40.0) / (95.0 - 40.0)) * 206))
 for x in range(410, 730, 12):
 draw_line(buf, W, H, x, limit_y, x + 6, limit_y, (255, 70, 85), thick=2)
 plot_glow_series(buf, W, H, horizon, t_cruise, 0, 60, 40, 95, 410, 82, 320, 206, (0, 210, 255), glow=True)
 plot_glow_series(buf, W, H, horizon, t_sprint, 0, 60, 40, 95, 410, 82, 320, 206, (255, 165, 40), glow=True)
-# Panel 3 Curves: Violet Radar Spikes, Glowing Lime Kalman Trajectory, Crimson AEB Trigger
 aeb_x = int(round(782 + (0.7 / 1.2) * 320))
 for y in range(82, 288, 10):
 draw_line(buf, W, H, aeb_x, y, aeb_x, y + 5, (255, 70, 85), thick=2)
