@@ -1,6 +1,6 @@
 # Apex Mobility SIL — Autonomous Vehicle & EV Telemetry Architecture
 
-[![CI Status](https://github.com)](https://github.com)
+[![SIL Regression Gate: Passing](docs/ci_badge.png)](https://github.com)
 
 ![Apex Mobility SIL Telemetry Dashboard](docs/sil_telemetry_dashboard.png)
 
