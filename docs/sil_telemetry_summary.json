@@ -1,0 +1,7 @@
+{
+  "architecture": "Apex Mobility SIL (12-Layer Zero-Dependency)",
+  "dsp_peak_current_filtered_a": 155.9,
+  "thermal_twin_60s_sprint_c": 87.72,
+  "aeb_trigger_time_s": 0.7,
+  "status": "PASS"
+}

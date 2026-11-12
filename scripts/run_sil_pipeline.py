@@ -17,10 +17,11 @@ STEPS = [
     ("8. AV Radar+LiDAR Kalman Fusion & AEB", "python3 av-perception-fusion/sensor_fusion_aeb.py"),
     ("9. Electrochemical-Aware AV Trajectory Governor", "python3 av-perception-fusion/electrochemical_governor.py"),
     ("10. Frontier Edge-Case & Boundary Stress Suite", "python3 scenarios/edge-case-stress/edge_case_stress_suite.py"),
+    ("11. Zero-Dependency SVG Telemetry Dashboard", "python3 telemetry/logger/generate_telemetry_report.py"),
 ]
 
 def main() -> int:
-    print("=== APEX MOBILITY SIL: FULL 11-LAYER ARCHITECTURE VALIDATION ===")
+    print("=== APEX MOBILITY SIL: FULL 12-LAYER VALIDATION ===")
     for name, cmd in STEPS:
         print(f"\n--- Running {name} ---")
         result = subprocess.run(cmd, shell=True)
@@ -28,7 +29,7 @@ def main() -> int:
             print(f"[ERROR] Failed at: {name}")
             return result.returncode
 
-    print("\n--- Running 11. Linux SocketCAN (vcan0) Bridge ---")
+    print("\n--- Running 12. Linux SocketCAN (vcan0) Bridge ---")
     if has_vcan0():
         can_cmd = "make -C bridges/socketcan-bus test && make -C bridges/socketcan-bus clean"
     else:
@@ -37,10 +38,10 @@ def main() -> int:
 
     result = subprocess.run(can_cmd, shell=True)
     if result.returncode != 0:
-        print("[ERROR] Failed at: 11. Linux SocketCAN Bridge")
+        print("[ERROR] Failed at: 12. Linux SocketCAN Bridge")
         return result.returncode
 
-    print("\n=== ALL 11 SIL LAYERS PASSED SUCCESSFULLY ===")
+    print("\n=== ALL 12 SIL LAYERS PASSED SUCCESSFULLY ===")
     return 0
 
 if __name__ == "__main__":
