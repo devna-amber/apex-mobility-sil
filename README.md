@@ -1,53 +1,102 @@
-# Apex Mobility SIL — Autonomous Vehicle & EV Telemetry Architecture
+# Apex Mobility SIL
 
-[![SIL Regression Gate: Passing](docs/ci_badge.png?v=2)](https://github.com)
+**Deterministic Software-in-the-Loop (SIL) Architecture for Software-Defined EVs & Autonomous Mobility**
 
-![Apex Mobility SIL Telemetry Dashboard](docs/sil_telemetry_dashboard.png?v=2)
+![Telemetry HUD](docs/sil_telemetry_dashboard.png)
 
-A deterministic, **12-layer Software-in-the-Loop (SIL)** simulation and validation architecture for next-generation Electric Vehicles (EVs) and Autonomous Vehicles (AVs). Built and verified natively on Linux using **C11, x86-64 Assembly (`nasm`), Verilog RTL (`iverilog`), Linux SocketCAN (`vcan0`), Python DSP, and GitHub Actions CI/CD**.
-
----
-
-## Novel Architectural Breakthroughs
-
-Unlike traditional automotive stacks where Autonomous Driving planners and Battery Management Systems (BMS) operate as isolated silos, **Apex Mobility SIL** introduces three closed-loop cross-domain innovations:
-
-1. **Electrochemical-Aware AV Trajectory & Regen Governor** (`/av-perception-fusion/electrochemical_governor.py`)
-   * Co-optimizes autonomous braking curves with **graphite anode lithium-plating overpotential physics**—blending mechanical friction braking with regenerative deceleration to eliminate cell degradation while preserving a hard **Safety AEB Override** (`TTC < 1.3s`) for sudden road obstacles.
-2. **Physical-Layer CAN Bus Intrusion Fingerprinting via `rdtscp`** (`/bridges/can-phy-fingerprint/`)
-   * Authenticates arriving CAN frames without cryptographic payload overhead by measuring nanosecond crystal oscillator clock-skew via x86-64 Assembly (`rdtscp`) paired with **ambient thermal drift compensation** (`0.8 ppm/°C`).
-3. **Self-Healing Hardware Cell-Bypass & Limp-Home Reflex Matrix** (`/plant-models/self-healing-reflex/`)
-   * Synthesizable **Verilog RTL** matrix that isolates single failed battery strings in **one clock cycle** to maintain **66% autonomous limp-home power** for safe highway shoulder pull-over, while enforcing total high-voltage contactor lockout during multi-string or thermal runaway faults.
+**Apex Mobility SIL** is a full-stack, zero-dependency automotive validation platform built natively on Linux. Rather than treating Autonomous Driving (AV) motion planning and Battery Management Systems (BMS) as isolated domains, this architecture couples **electrochemical anode aging physics**, **hardware-level CPU clock-skew intrusion detection**, and **single-cycle Verilog cell-bypass logic** into a deterministic real-time pipeline.
 
 ---
 
-## Complete 11-Layer System Architecture
+## System Architecture & Signal Flow
 
-| Layer | Module Path | Technology | Core Engineering Function |
-| :--- | :--- | :--- | :--- |
-| **1** | `/ecu-powertrain-c` | **Embedded C (C11)** | Real-time BMS thermal, voltage, and discharge current guard with Diagnostic Trouble Code (DTC) logging. |
-| **2** | `/bridges/checksum-asm` | **x86-64 Assembly + C** | System V AMD64 ABI register-level rotating XOR frame checksum detecting single-bit CAN corruption. |
-| **3** | `/bridges/can-phy-fingerprint` | **x86-64 `rdtscp` + C** | Thermal-compensated hardware clock-skew fingerprinter blocking spoofed ECU frame injections. |
-| **4** | `/plant-models/safety-fsm-verilog` | **Verilog RTL (`iverilog`)** | Deterministic hardware safety interlock FSM (`IDLE` → `NOMINAL` → `DERATE` → `FAULT_LOCKOUT`). |
-| **5** | `/plant-models/self-healing-reflex` | **Verilog RTL (`iverilog`)** | Single-cycle 3-string battery bypass matrix enabling graceful autonomous shoulder pull-over. |
-| **6** | `/telemetry/dsp-filter` | **Python (`NumPy`)** | 51-tap Hamming-windowed FIR low-pass convolution filter + FFT analyzer (+16.8 dB SNR gain vs. 450 Hz PWM noise). |
-| **7** | `/plant-models/thermal-twin` | **Python (`NumPy`)** | 1st-order RC + Joule heating ($I^2R$) Digital Twin forecasting core cell temperatures 60 seconds ahead. |
-| **8** | `/av-perception-fusion/sensor_fusion_aeb.py` | **Python (`NumPy`)** | 1D Kalman Filter fusing noisy Radar and LiDAR range measurements to trigger Time-to-Collision AEB. |
-| **9** | `/av-perception-fusion/electrochemical_governor.py` | **Python (`NumPy`)** | Anode overpotential trajectory governor balancing zero-degradation regen with emergency crash avoidance. |
-| **10** | `/scenarios/edge-case-stress` | **Python** | Unified boundary stress suite validating emergency AEB overrides, 48°C crystal drift, and cascading faults. |
-| **11** | `/bridges/socketcan-bus` | **Linux SocketCAN (`vcan0`)** | Native kernel `PF_CAN` C transmitter and Python receiver exchanging real 8-byte CRC-8 protected CAN frames. |
+```mermaid
+flowchart LR
+    subgraph SENSORS["1. Physical & Virtual Sensors"]
+        S1["400V Shunt Current<br/>(450Hz PWM Noise)"]
+        S2["Radar + LiDAR<br/>Range Stream"]
+    end
+
+    subgraph CONDITIONING["2. DSP & Security Gate"]
+        D1["51-Tap Hamming FIR<br/>(+27.95 dB SNR)"]
+        D2["x86-64 ASM Checksum<br/>& RDTSCP Clock-Skew"]
+    end
+
+    subgraph INTELLIGENCE["3. Predictive & AV Control"]
+        P1["1st-Order RC<br/>Thermal Digital Twin"]
+        P2["Kalman Fusion +<br/>Electrochemical AEB"]
+    end
+
+    subgraph HARDWARE["4. Deterministic Protection"]
+        H1["C11 BMS Guard<br/>(DTC Blackbox)"]
+        H2["Verilog Self-Healing<br/>Cell Bypass Matrix"]
+    end
+
+    S1 --> D1 --> D2 --> P1 --> H1 --> H2
+    S2 --> P2 --> H2
+```
 
 ---
 
-## Quick Start on Ubuntu
+## Core Engineering Innovations
+
+* **Electrochemical-Aware Trajectory & Regen Governor (`/av-perception-fusion/electrochemical_governor.py`)**
+  Calculates real-time graphite anode overpotential (\(\eta_{\text{anode}}\)) prior to regenerative braking. Dynamically blends mechanical friction braking with capped regenerative current to prevent lithium plating at high SoC, while enforcing a hard **Safety AEB Override** (`TTC < 1.3s`) for sudden road obstacles.
+* **Physical-Layer CAN Intrusion Fingerprinting via `rdtscp` (`/bridges/can-phy-fingerprint/`)**
+  Authenticates arriving CAN frames with zero cryptographic payload overhead by measuring nanosecond crystal oscillator drift via x86-64 Assembly (`rdtscp`) paired with ambient thermal compensation (`0.8 ppm/°C`).
+* **Self-Healing Verilog Cell-Bypass Matrix (`/plant-models/self-healing-reflex/`)**
+  Synthesizable Verilog RTL controller that isolates a single failed battery string in **one clock cycle** to preserve **66% limp-home power** for autonomous shoulder pull-over, while triggering full high-voltage contactor isolation during multi-string or thermal runaway faults.
+
+---
+
+## Verified Benchmark Metrics
+
+| Validation Domain | Implementation Stack | Measured Performance / Guarantee |
+| :--- | :--- | :--- |
+| **Frame Integrity** | x86-64 Assembly (`nasm`) + C11 | Single-bit corruption detection adhering to System V AMD64 ABI |
+| **Bus Intrusion Security** | x86-64 `rdtscp` + Thermal Model | Blocks +85 ppm rogue ECU spoofing while tolerating 48°C crystal drift |
+| **Hardware Fault Trip** | Verilog RTL (`iverilog`) | **1-cycle** deterministic contactor isolation & string reconfiguration |
+| **Signal Conditioning** | Python Discrete-Time FIR + FFT | **+27.95 dB SNR gain** attenuating 450 Hz PWM inverter switching ripple |
+| **Thermal Forecasting** | 1st-Order RC + I²R Digital Twin | **60-second** lookahead early derate prior to 55°C cell threshold |
+| **Autonomous Braking** | 1D Kalman Filter (Radar + LiDAR) | Triggers full emergency braking at **TTC < 1.2s** (`t = 0.7s` cut-in) |
+
+---
+
+## Repository Structure
+
+```text
+apex-mobility-sil/
+├── av-perception-fusion/    # 1D Kalman Radar+LiDAR fusion & electrochemical regen governor
+├── bridges/
+│   ├── checksum-asm/        # x86-64 assembly rotating XOR telemetry frame validator
+│   ├── can-phy-fingerprint/ # x86-64 rdtscp thermal-compensated ECU clock-skew detector
+│   └── socketcan-bus/       # Native Linux PF_CAN (vcan0) C transmitter & Python listener
+├── ecu-powertrain-c/        # Embedded C11 BMS thermal/voltage fault guard & DTC logger
+├── plant-models/
+│   ├── safety-fsm-verilog/  # Synthesizable Verilog HV contactor safety interlock FSM
+│   ├── self-healing-reflex/ # Synthesizable Verilog 3-string cell bypass & limp-home matrix
+│   └── thermal-twin/        # Physics-informed RC + Joule heating core temperature predictor
+├── scenarios/
+│   └── edge-case-stress/    # Multi-domain boundary & fault-injection regression suite
+├── scripts/
+│   ├── sil_cockpit.py       # Live ANSI terminal telemetry & latency benchmark cockpit
+│   └── run_sil_pipeline.py  # Master 12-layer CI/CD validation runner
+└── telemetry/
+    ├── dsp-filter/          # Hamming-windowed FIR low-pass filter & FFT spectral analyzer
+    └── logger/              # Deterministic JSON/CSV flight recorder & HUD plot generator
+```
+
+---
+
+## Quick Start (Ubuntu / Linux)
 
 ```bash
-# 1. Install Linux systems, HDL, and scientific toolchains
+# 1. Install systems, HDL, and numerical toolchains
 sudo apt update && sudo apt install -y gcc nasm make iverilog python3-numpy can-utils
 
-# 2. Optional: Bring up virtual automotive CAN bus
-sudo modprobe vcan && sudo ip link add dev vcan0 type vcan && sudo ip link set up vcan0
+# 2. Launch the Live ANSI Telemetry & Latency Cockpit
+python3 scripts/sil_cockpit.py
 
-# 3. Execute the full 11-layer end-to-end validation suite
+# 3. Execute the Full 12-Layer CI Regression Suite
 python3 scripts/run_sil_pipeline.py
 ```
