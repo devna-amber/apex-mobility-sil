@@ -13,23 +13,23 @@
 ```mermaid
 flowchart LR
     subgraph SENSORS["1. Physical & Virtual Sensors"]
-        S1["400V Shunt Current<br/>(450Hz PWM Noise)"]
-        S2["Radar + LiDAR<br/>Range Stream"]
+        S1["400V Shunt Current\n(450Hz PWM Noise)"]
+        S2["Radar + LiDAR\nRange Stream"]
     end
 
     subgraph CONDITIONING["2. DSP & Security Gate"]
-        D1["51-Tap Hamming FIR<br/>(+27.95 dB SNR)"]
-        D2["x86-64 ASM Checksum<br/>& RDTSCP Clock-Skew"]
+        D1["51-Tap Hamming FIR\n(+27.95 dB SNR)"]
+        D2["x86-64 ASM Checksum\n& RDTSCP Clock-Skew"]
     end
 
     subgraph INTELLIGENCE["3. Predictive & AV Control"]
-        P1["1st-Order RC<br/>Thermal Digital Twin"]
-        P2["Kalman Fusion +<br/>Electrochemical AEB"]
+        P1["1st-Order RC\nThermal Digital Twin"]
+        P2["Kalman Fusion +\nElectrochemical AEB"]
     end
 
     subgraph HARDWARE["4. Deterministic Protection"]
-        H1["C11 BMS Guard<br/>(DTC Blackbox)"]
-        H2["Verilog Self-Healing<br/>Cell Bypass Matrix"]
+        H1["C11 BMS Guard\n(DTC Blackbox)"]
+        H2["Verilog Self-Healing\nCell Bypass Matrix"]
     end
 
     S1 --> D1 --> D2 --> P1 --> H1 --> H2
